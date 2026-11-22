@@ -1,7 +1,5 @@
 package com.cctomato.tomatofile.util
 
-import java.util.Locale
-
 /** Orders "IMG_2" before "IMG_10", which is what users expect when swiping through photos. */
 object NaturalOrder : Comparator<String> {
     override fun compare(a: String, b: String): Int {
@@ -34,9 +32,4 @@ object NaturalOrder : Comparator<String> {
         val remaining = (a.length - i).compareTo(b.length - j)
         return if (remaining != 0) remaining else a.compareTo(b, ignoreCase = true)
     }
-}
-
-fun String.isLikelyWebUrl(): Boolean {
-    val value = trim().lowercase(Locale.ROOT)
-    return value.startsWith("http://") || value.startsWith("https://")
 }

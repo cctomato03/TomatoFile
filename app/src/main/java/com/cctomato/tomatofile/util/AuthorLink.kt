@@ -1,16 +1,28 @@
 package com.cctomato.tomatofile.util
 
 import com.cctomato.tomatofile.data.model.ImageMetadata
-import java.net.URLEncoder
 import java.util.Locale
 
 /**
- * Turns the author field of an image into a system-openable link. A real URL is used as-is;
- * a plain name (or an email address) becomes a web search so the link button always has a useful
- * destination when metadata exists.
+ * Extracts a protocol-bearing link from image metadata. A plain author name is NOT turned into a
+ * search URL: if the metadata contains something like `https://…`, `mailto:…` or a custom
+ * `app://…` scheme, it is passed through unchanged to the system so the matching app can open it.
  */
 object AuthorLink {
-    private val urlPattern = Regex("""https?://[^\s<>"']+""", RegexOption.IGNORE_CASE)
+    /** The whole value is one URI, e.g. `https://example.com/a` or `myapp://author/42`. */
+    private val fullUriPattern = Regex("""^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"']+$""")
+
+    /** Finds a URI embedded in a sentence, e.g. `Photo by Jane (https://jane.example.com)`. */
+    private val embeddedUriPattern = Regex(
+        """(?:[A-Za-z][A-Za-z0-9+.-]*://|(?:mailto|tel|sms|geo|urn):)[^\s<>"']+""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /** Schemes that must never be launched from untrusted image metadata. */
+    private val blockedSchemes = setOf(
+        "file", "content", "javascript", "data", "intent", "android.resource"
+    )
+
     private val placeholders = setOf(
         "unknown", "unknown artist", "anonymous", "none", "null", "n/a", "na", "untitled", "-"
     )
@@ -18,28 +30,33 @@ object AuthorLink {
     fun fromMetadata(metadata: ImageMetadata): String? {
         val artist = metadata.artist?.trim()?.takeIf { it.isNotBlank() && !isPlaceholder(it) }
         if (artist != null) {
-            return normalize(artist)
+            protocolLink(artist)?.let { return it }
         }
         val copyright = metadata.copyright?.trim()?.takeIf { it.isNotBlank() && !isPlaceholder(it) }
         if (copyright != null) {
-            urlPattern.find(copyright)?.let { return it.value.trimEnd('.', ',', ';', ')', ']') }
+            protocolLink(copyright)?.let { return it }
         }
         return null
     }
 
-    fun normalize(raw: String): String {
+    /**
+     * Returns [raw] (or the URI embedded in it) only when it carries a scheme. Plain names,
+     * bare domains and naked email addresses deliberately return null instead of a search link.
+     */
+    fun protocolLink(raw: String): String? {
         val value = raw.trim()
-        urlPattern.find(value)?.let { match ->
-            return match.value.trimEnd('.', ',', ';', ')', ']')
-        }
-        val lowered = value.lowercase(Locale.ROOT)
-        return when {
-            lowered.startsWith("mailto:") -> value
-            value.contains('@') && !value.contains(' ') -> "mailto:$value"
-            lowered.startsWith("www.") -> "https://$value"
-            value.matches(Regex("""^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(/.*)?$""")) -> "https://$value"
-            else -> "https://www.google.com/search?q=" + URLEncoder.encode(value, "UTF-8")
-        }
+        if (value.isEmpty()) return null
+        val candidate = when {
+            fullUriPattern.matches(value) -> value
+            else -> embeddedUriPattern.find(value)?.value ?: return null
+        }.trimEnd(
+            '.', ',', ';', ')', ']', '}', '>', '"', '\'',
+            '。', '，', '；', '）', '】', '》'
+        )
+        if (candidate.isEmpty()) return null
+        val scheme = candidate.substringBefore(':').lowercase(Locale.ROOT)
+        if (scheme.isBlank() || scheme in blockedSchemes) return null
+        return candidate
     }
 
     private fun isPlaceholder(value: String): Boolean =

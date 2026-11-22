@@ -280,13 +280,23 @@ private fun ViewerContent(
                             }
                             metadata = result
                             val link = AuthorLink.fromMetadata(result)
+                            val author = result.artist ?: result.copyright
                             if (link == null) {
-                                snackbar.showSnackbar("这张图片没有作者信息")
+                                snackbar.showSnackbar(
+                                    if (!author.isNullOrBlank()) {
+                                        "作者信息不是带协议的链接"
+                                    } else {
+                                        "这张图片没有作者信息"
+                                    }
+                                )
                             } else {
                                 val opened = ExternalIntents.openUrl(context, link)
-                                val author = result.artist ?: result.copyright ?: "作者"
                                 snackbar.showSnackbar(
-                                    if (opened) "正在打开：$author" else "没有可以打开链接的应用"
+                                    if (opened) {
+                                        "已交给系统打开：${author ?: link}"
+                                    } else {
+                                        "没有应用可以响应此链接"
+                                    }
                                 )
                             }
                         }

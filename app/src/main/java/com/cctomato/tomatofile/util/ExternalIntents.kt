@@ -10,7 +10,8 @@ import java.io.File
 object ExternalIntents {
 
     fun openUrl(context: Context, url: String): Boolean {
-        val parsed = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        val parsed = runCatching { Uri.parse(url.trim()) }.getOrNull() ?: return false
+        if (parsed.scheme.isNullOrBlank()) return false
         val intent = Intent(Intent.ACTION_VIEW, parsed).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
