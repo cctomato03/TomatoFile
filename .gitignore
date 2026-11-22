@@ -1,0 +1,14 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild
+.cxx
+*.hprof
+*.log
+
+# Local release keystore is committed on purpose for GitHub Actions builds.
+# (The workflow can still override it through repository secrets.)

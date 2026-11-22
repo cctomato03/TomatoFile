@@ -1,0 +1,97 @@
+name: Build & Release APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tomatofile-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build signed APK and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compute version
+        id: version
+        run: |
+          VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          echo "tag=v${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release APK
+        env:
+          TOMATO_STORE_PASSWORD: tomato-2026-release
+          TOMATO_KEY_ALIAS: tomatofile
+          TOMATO_KEY_PASSWORD: tomato-2026-release
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/TomatoFile-${VERSION_NAME}.apk"
+          cd dist
+          sha256sum "TomatoFile-${VERSION_NAME}.apk" > "TomatoFile-${VERSION_NAME}.apk.sha256"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TomatoFile-${{ env.VERSION_NAME }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: TomatoFile ${{ env.VERSION_NAME }}
+          draft: false
+          prerelease: false
+          body: |
+            ## TomatoFile v${{ env.VERSION_NAME }}
+
+            一个色彩丰富的 Android 文件管理器，支持本地存储与 WebDAV / SMB / FTP。
+
+            ### 功能
+            - 本地目录、WebDAV、SMB 2/3、FTP / FTPS 统一浏览
+            - 文本、PDF、Word / Excel / PowerPoint 文本预览
+            - 全屏图片浏览器：左右滑动、双指缩放、双击放大
+            - 图片加载后右下角链接按钮：读取 EXIF 作者并打开系统链接
+            - 网络文件 LRU 磁盘缓存，可查看占用并一键清理
+
+            ### 安装
+            下载 APK 后在 Android 设备上安装（需要允许安装未知来源应用）。
+            首次使用「本机存储」时，请在系统设置中授予「所有文件访问权限」。
+
+            SHA-256 校验文件随 APK 一同发布。
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
