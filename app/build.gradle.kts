@@ -10,6 +10,7 @@ val appVersionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
 android {
     namespace = "com.cctomato.tomatofile"
     compileSdk = 35
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "com.cctomato.tomatofile"

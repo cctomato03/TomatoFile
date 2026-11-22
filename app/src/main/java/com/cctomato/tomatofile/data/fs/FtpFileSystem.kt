@@ -106,7 +106,6 @@ class FtpFileSystem(private val source: FileSource) : FileSystemClient {
             setDataTimeout(Duration.ofSeconds(45))
             controlEncoding = "UTF-8"
             setAutodetectUTF8(true)
-            listHiddenFiles = true
             bufferSize = 64 * 1024
         }
     }

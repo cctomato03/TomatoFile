@@ -27,7 +27,7 @@ class PdfPageRenderer(file: File) : AutoCloseable {
         withContext(Dispatchers.IO) {
             val page = renderer.openPage(index)
             try {
-                val safeWidth = targetWidth.coerceIn(320, 2400)
+                val safeWidth = targetWidth.coerceIn(320, 1600)
                 val scale = safeWidth.toFloat() / page.width.toFloat()
                 val width = (page.width * scale).toInt().coerceAtLeast(1)
                 val height = (page.height * scale).toInt().coerceAtLeast(1)
@@ -35,7 +35,7 @@ class PdfPageRenderer(file: File) : AutoCloseable {
                 bitmap.eraseColor(Color.WHITE)
                 page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                 cache[index] = bitmap
-                while (cache.size > 4) {
+                while (cache.size > 3) {
                     val iterator = cache.entries.iterator()
                     if (!iterator.hasNext()) break
                     iterator.next()

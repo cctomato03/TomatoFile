@@ -37,9 +37,19 @@ class BrowseViewModel(
     private val _state = MutableStateFlow(BrowserState(path = initialPath))
     val state: StateFlow<BrowserState> = _state.asStateFlow()
     private var requestId = 0
+    private var scrollRequestVersion = 0
+    private var consumedScrollVersion = -1
 
     init {
         load(initialPath)
+    }
+
+    /** True exactly once per navigation request; lets the screen scroll to top without
+     * resetting the position when returning from a preview. */
+    fun consumeScrollRequest(): Boolean {
+        if (consumedScrollVersion == scrollRequestVersion) return false
+        consumedScrollVersion = scrollRequestVersion
+        return true
     }
 
     private fun permissionNeeded(source: FileSource?): Boolean =
@@ -99,11 +109,16 @@ class BrowseViewModel(
 
     fun refresh() = load(_state.value.path, refresh = true)
 
-    fun open(path: String) = load(path)
+    fun navigateTo(path: String) {
+        scrollRequestVersion++
+        load(path)
+    }
+
+    fun open(path: String) = navigateTo(path)
 
     fun goUp() {
         val path = _state.value.path
-        if (!FsPaths.isRoot(path)) load(FsPaths.parent(path))
+        if (!FsPaths.isRoot(path)) navigateTo(FsPaths.parent(path))
     }
 
     fun retry() = load(_state.value.path)

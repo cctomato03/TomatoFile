@@ -31,17 +31,6 @@ object TextFileReader {
             output.toByteArray()
         }
         if (bytes.isEmpty()) return TextContent("", truncated, false, "UTF-8")
-
-        val nulCount = bytes.take(minOf(bytes.size, 16 * 1024)).count { it == 0.toByte() }
-        if (nulCount > 4) {
-            return TextContent(
-                text = "此文件看起来是二进制文件，无法以文本方式预览。",
-                truncated = truncated,
-                binary = true,
-                charset = ""
-            )
-        }
-
         val (charset, offset) = when {
             bytes.size >= 3 && bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() &&
                 bytes[2] == 0xBF.toByte() -> "UTF-8" to 3
@@ -50,6 +39,19 @@ object TextFileReader {
             bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte() ->
                 "UTF-16BE" to 2
             else -> "UTF-8" to 0
+        }
+
+        if (charset == "UTF-8") {
+            val sample = bytes.take(minOf(bytes.size, 16 * 1024))
+            val nulCount = sample.count { it == 0.toByte() }
+            if (nulCount >= 4 || (sample.isNotEmpty() && nulCount.toDouble() / sample.size > 0.02)) {
+                return TextContent(
+                    text = "此文件看起来是二进制文件，无法以文本方式预览。",
+                    truncated = truncated,
+                    binary = true,
+                    charset = ""
+                )
+            }
         }
 
         var text = String(bytes, offset, bytes.size - offset, Charset.forName(charset))

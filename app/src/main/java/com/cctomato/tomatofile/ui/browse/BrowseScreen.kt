@@ -119,8 +119,10 @@ fun BrowseScreen(
     val gridState = rememberLazyGridState()
 
     LaunchedEffect(state.path) {
-        listState.scrollToItem(0)
-        gridState.scrollToItem(0)
+        if (viewModel.consumeScrollRequest()) {
+            listState.scrollToItem(0)
+            gridState.scrollToItem(0)
+        }
     }
 
     AppBackground {
@@ -195,7 +197,7 @@ fun BrowseScreen(
             Breadcrumbs(
                 source = source,
                 path = state.path,
-                onNavigate = { viewModel.load(it) }
+                onNavigate = { viewModel.navigateTo(it) }
             )
 
             if (state.refreshing && entries.isNotEmpty()) {

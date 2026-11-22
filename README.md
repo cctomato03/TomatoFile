@@ -28,7 +28,15 @@
 
 ## 截图
 
-> 运行截图会随 Release 一并更新。当前界面包含渐变首页、彩色存储卡片、文件列表/网格、全屏图片查看器与缓存管理。
+| 首页 | 文件浏览 |
+| --- | --- |
+| ![首页](docs/screenshots/home.png) | ![文件浏览](docs/screenshots/browse.png) |
+
+| 图片查看器（右下角作者链接） | 缓存管理 |
+| --- | --- |
+| ![图片查看器](docs/screenshots/viewer.png) | ![缓存管理](docs/screenshots/cache.png) |
+
+![设置](docs/screenshots/settings.png)
 
 ## 技术栈
 

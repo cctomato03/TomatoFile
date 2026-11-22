@@ -27,18 +27,30 @@ object StoragePermissions {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.R
 
     fun requestAllFilesAccess(context: Context): Boolean {
-        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Intent(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val packageIntent = Intent(
                 Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                 Uri.parse("package:${context.packageName}")
             )
-        } else {
-            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.parse("package:${context.packageName}")
+            val opened = runCatching {
+                context.startActivity(packageIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                true
+            }.getOrDefault(false)
+            if (opened) return true
+            val fallback = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+            return runCatching {
+                context.startActivity(fallback)
+                true
+            }.getOrDefault(false)
+        }
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         return runCatching {
-            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            context.startActivity(intent)
             true
         }.getOrDefault(false)
     }
