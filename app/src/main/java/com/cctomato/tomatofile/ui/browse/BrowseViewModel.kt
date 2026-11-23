@@ -40,6 +40,12 @@ class BrowseViewModel(
     private var scrollRequestVersion = 0
     private var consumedScrollVersion = -1
 
+    private data class DirectorySnapshot(val path: String, val entries: List<FileEntry>)
+
+    // Parent directories already visited. Returning pops a snapshot instead of hitting the
+    // network again, so the list and its scroll position survive a back navigation.
+    private val history = mutableListOf<DirectorySnapshot>()
+
     init {
         load(initialPath)
     }
@@ -121,8 +127,26 @@ class BrowseViewModel(
     fun refresh() = load(_state.value.path, refresh = true)
 
     fun navigateTo(path: String) {
+        val normalized = FsPaths.normalize(path)
+        val current = _state.value
+        if (normalized == current.path) return
+
+        // Breadcrumb / back navigation to an ancestor: restore the cached listing.
+        val cachedIndex = history.indexOfLast { it.path == normalized }
+        if (cachedIndex >= 0) {
+            val snapshot = history[cachedIndex]
+            while (history.size > cachedIndex) history.removeLast()
+            restore(snapshot)
+            return
+        }
+
+        // Descending into a child: remember the current directory first.
+        if (!current.loading && current.error == null) {
+            history.addLast(DirectorySnapshot(current.path, current.entries))
+            if (history.size > 32) history.removeAt(0)
+        }
         scrollRequestVersion++
-        load(path)
+        load(normalized)
     }
 
     fun open(path: String) = navigateTo(path)
@@ -130,6 +154,20 @@ class BrowseViewModel(
     fun goUp() {
         val path = _state.value.path
         if (!FsPaths.isRoot(path)) navigateTo(FsPaths.parent(path))
+    }
+
+    private fun restore(snapshot: DirectorySnapshot) {
+        requestId++
+        val current = _state.value
+        _state.value = BrowserState(
+            loading = false,
+            refreshing = false,
+            source = current.source,
+            path = snapshot.path,
+            entries = snapshot.entries,
+            error = null,
+            permissionRequired = permissionNeeded(current.source)
+        )
     }
 
     fun retry() = load(_state.value.path)

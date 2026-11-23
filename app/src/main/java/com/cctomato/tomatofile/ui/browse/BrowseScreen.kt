@@ -118,14 +118,15 @@ fun BrowseScreen(
         sortEntries(state.entries, sortMode)
     }
     val source = state.source
-    val listState = rememberLazyListState()
-    val gridState = rememberLazyGridState()
-
-    LaunchedEffect(state.path) {
-        if (viewModel.consumeScrollRequest()) {
-            listState.scrollToItem(0)
-            gridState.scrollToItem(0)
-        }
+    // Keep one scroll state per directory. Returning to a cached parent therefore restores
+    // both the file list and the exact scroll offset.
+    val listStates = remember { mutableMapOf<String, androidx.compose.foundation.lazy.LazyListState>() }
+    val gridStates = remember { mutableMapOf<String, androidx.compose.foundation.lazy.grid.LazyGridState>() }
+    val listState = listStates.getOrPut(state.path) {
+        androidx.compose.foundation.lazy.LazyListState()
+    }
+    val gridState = gridStates.getOrPut(state.path) {
+        androidx.compose.foundation.lazy.grid.LazyGridState()
     }
 
     AppBackground {
