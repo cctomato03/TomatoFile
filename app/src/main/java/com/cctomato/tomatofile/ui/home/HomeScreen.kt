@@ -106,14 +106,12 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val sources by viewModel.sources.collectAsStateWithLifecycle()
-    val stats by viewModel.stats.collectAsStateWithLifecycle()
     var hasPermission by remember { mutableStateOf(StoragePermissions.hasAllFilesAccess(context)) }
     var deleteTarget by remember { mutableStateOf<FileSource?>(null) }
     val snackbar = remember { SnackbarHostState() }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         hasPermission = StoragePermissions.hasAllFilesAccess(context)
-        viewModel.refreshStats()
     }
 
     // The standard card home is used on both phones and TV: it is a LazyColumn,
@@ -142,12 +140,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    HeroHeader(
-                        sourceCount = sources.size,
-                        cacheBytes = stats.totalBytes,
-                        onOpenCache = onOpenCache,
-                        onOpenSettings = onOpenSettings
-                    )
+                    SimpleHomeHeader(onOpenSettings = onOpenSettings)
                 }
                 if (!hasPermission) {
                     item {
@@ -175,28 +168,6 @@ fun HomeScreen(
                         }
                     )
                 }
-                item {
-                    AddSourceCard(onClick = onAddSource)
-                }
-                item {
-                    CacheOverviewCard(
-                        bytes = stats.totalBytes,
-                        maxBytes = stats.maxBytes,
-                        itemCount = stats.itemCount,
-                        onClick = onOpenCache
-                    )
-                }
-                item {
-                    Text(
-                        "TomatoFile · 本地与网络文件，一处浏览",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 10.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
             }
         }
     }
@@ -221,6 +192,29 @@ fun HomeScreen(
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text("取消") }
             }
+        )
+    }
+}
+
+@Composable
+private fun SimpleHomeHeader(onOpenSettings: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "TomatoFile",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.weight(1f)
+        )
+        RoundIconButton(
+            icon = Icons.Rounded.Settings,
+            contentDescription = "设置",
+            onClick = onOpenSettings
         )
     }
 }

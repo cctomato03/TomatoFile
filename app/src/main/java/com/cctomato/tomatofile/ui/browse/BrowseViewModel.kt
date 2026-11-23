@@ -59,6 +59,16 @@ class BrowseViewModel(
     fun load(path: String, refresh: Boolean = false) {
         val normalized = FsPaths.normalize(path)
         val current = ++requestId
+        // Clear the previous directory immediately so a slow listing cannot show stale files.
+        _state.update {
+            it.copy(
+                loading = !refresh,
+                refreshing = refresh,
+                path = normalized,
+                entries = if (refresh) it.entries else emptyList(),
+                error = null
+            )
+        }
         viewModelScope.launch {
             val source = container.sources.get(sourceId)
             if (source == null) {
@@ -71,9 +81,10 @@ class BrowseViewModel(
             }
             _state.update {
                 it.copy(
-                    loading = !refresh && it.entries.isEmpty(),
+                    loading = !refresh,
                     refreshing = refresh,
                     path = normalized,
+                    entries = if (refresh) it.entries else emptyList(),
                     source = source,
                     error = null,
                     permissionRequired = permissionNeeded(source)

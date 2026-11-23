@@ -314,13 +314,9 @@ private fun ViewerContent(
                                 )
                             } else {
                                 val opened = ExternalIntents.openUrl(context, link)
-                                snackbar.showSnackbar(
-                                    if (opened) {
-                                        "已交给系统打开：${author ?: link}"
-                                    } else {
-                                        "没有应用可以响应此链接"
-                                    }
-                                )
+                                if (!opened) {
+                                    snackbar.showSnackbar("没有应用可以响应此链接")
+                                }
                             }
                         }
                     },
@@ -362,11 +358,6 @@ private fun ViewerContent(
                 color = Color.White.copy(alpha = 0.9f),
                 style = MaterialTheme.typography.labelLarge
             )
-            Text(
-                "双指缩放 · 双击放大 · 左右滑动",
-                color = Color.White.copy(alpha = 0.45f),
-                style = MaterialTheme.typography.labelMedium
-            )
         }
 
         SnackbarHost(
@@ -387,10 +378,7 @@ private fun ViewerContent(
             MetadataSheet(
                 entry = currentEntry,
                 metadata = metadata,
-                loading = metadataLoading,
-                onOpenAuthor = { link ->
-                    ExternalIntents.openUrl(context, link)
-                }
+                loading = metadataLoading
             )
         }
     }
@@ -485,8 +473,7 @@ private fun ViewerPage(
 private fun MetadataSheet(
     entry: FileEntry,
     metadata: ImageMetadata?,
-    loading: Boolean,
-    onOpenAuthor: (String) -> Unit
+    loading: Boolean
 ) {
     Column(
         Modifier
@@ -529,24 +516,6 @@ private fun MetadataSheet(
                 InfoRow("拍摄时间", metadata.dateTime.orEmpty())
                 InfoRow("位置", metadata.location.orEmpty())
                 InfoRow("软件", metadata.software.orEmpty())
-                val link = AuthorLink.fromMetadata(metadata)
-                if (link != null) {
-                    Spacer(Modifier.height(16.dp))
-                    GradientButton(
-                        text = "打开作者链接",
-                        onClick = { onOpenAuthor(link) },
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = Icons.Rounded.Link
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        link,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
         }
     }
