@@ -38,6 +38,12 @@ class FileRepository(private val cache: RemoteCache) {
         client(source).list("/").size
     }
 
+    /** Opens a raw stream (optionally at a byte offset) without going through the preview cache. */
+    suspend fun openStream(source: FileSource, path: String, position: Long = 0L): java.io.InputStream =
+        withContext(Dispatchers.IO) {
+            client(source).openStream(path, position)
+        }
+
     /** Downloads (or reuses) a local copy for previews. Local sources are returned in place. */
     suspend fun localFile(source: FileSource, entry: FileEntry): File = withContext(Dispatchers.IO) {
         if (entry.isDirectory) throw IllegalArgumentException("目录不能作为文件预览")

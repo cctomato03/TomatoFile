@@ -20,9 +20,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowForward
@@ -59,9 +64,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,11 +87,13 @@ import com.cctomato.tomatofile.ui.components.EmptyState
 import com.cctomato.tomatofile.ui.components.RoundIconButton
 import com.cctomato.tomatofile.ui.components.SectionTitle
 import com.cctomato.tomatofile.ui.components.SourceBadge
+import com.cctomato.tomatofile.ui.components.sourceIcon
 import com.cctomato.tomatofile.ui.theme.TomatoAccents
 import com.cctomato.tomatofile.ui.theme.TomatoGradients
+import com.cctomato.tomatofile.ui.tv.tvFocus
 import com.cctomato.tomatofile.util.StoragePermissions
 import com.cctomato.tomatofile.util.formatBytes
-import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
@@ -105,6 +116,8 @@ fun HomeScreen(
         viewModel.refreshStats()
     }
 
+    // The standard card home is used on both phones and TV: it is a LazyColumn,
+    // scrolls reliably and every interactive card already receives tvFocus styling.
     AppBackground {
         Scaffold(
             containerColor = Color.Transparent,
@@ -336,6 +349,7 @@ private fun PermissionBanner(onRequest: () -> Unit) {
             .padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .tvFocus(RoundedCornerShape(22.dp))
             .clickable(onClick = onRequest)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -391,6 +405,7 @@ private fun SourceCard(
         Row(
             Modifier
                 .fillMaxWidth()
+                .tvFocus(RoundedCornerShape(24.dp))
                 .clickable(onClick = onClick)
                 .background(
                     Brush.horizontalGradient(
@@ -501,6 +516,7 @@ private fun AddSourceCard(onClick: () -> Unit) {
                 MaterialTheme.colorScheme.outlineVariant,
                 RoundedCornerShape(24.dp)
             )
+            .tvFocus(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -544,6 +560,7 @@ private fun CacheOverviewCard(bytes: Long, maxBytes: Long, itemCount: Int, onCli
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .animateContentSize()
+            .tvFocus(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
@@ -587,5 +604,332 @@ private fun CacheOverviewCard(bytes: Long, maxBytes: Long, itemCount: Int, onCli
                 trackColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.12f)
             )
         }
+    }
+}
+
+@Composable
+private fun TvHomeScreen(
+    sources: List<FileSource>,
+    stats: com.cctomato.tomatofile.data.model.CacheStats,
+    hasPermission: Boolean,
+    onOpenSource: (FileSource) -> Unit,
+    onAddSource: () -> Unit,
+    onEditSource: (FileSource) -> Unit,
+    onOpenCache: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onRequestPermission: () -> Unit
+) {
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(sources.size, hasPermission) {
+        delay(250L)
+        runCatching { firstFocus.requestFocus() }
+    }
+
+    AppBackground {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 56.dp, vertical = 30.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(68.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Color.White.copy(alpha = 0.94f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_tomato_logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(54.dp)
+                    )
+                }
+                Spacer(Modifier.width(18.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "TomatoFile",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        "本地、WebDAV、SMB、FTP · 大屏影院模式",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TvCachePill(
+                    bytes = stats.totalBytes,
+                    count = stats.itemCount,
+                    onClick = onOpenCache
+                )
+                Spacer(Modifier.width(14.dp))
+                RoundIconButton(
+                    icon = Icons.Rounded.Settings,
+                    contentDescription = "设置",
+                    onClick = onOpenSettings
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+            if (!hasPermission) {
+                PermissionBanner(onRequest = onRequestPermission)
+                Spacer(Modifier.height(18.dp))
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("存储位置", style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "${sources.size} 个存储",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(196.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                itemsIndexed(sources, key = { _, source -> source.id }) { index, source ->
+                    TvSourceTile(
+                        source = source,
+                        onClick = { onOpenSource(source) },
+                        onEdit = { onEditSource(source) },
+                        modifier = if (index == 0) {
+                            Modifier.focusRequester(firstFocus)
+                        } else {
+                            Modifier
+                        }
+                    )
+                }
+                item {
+                    TvAddTile(
+                        onClick = onAddSource,
+                        modifier = if (sources.isEmpty()) {
+                            Modifier.focusRequester(firstFocus)
+                        } else {
+                            Modifier
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(26.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                TvQuickTile(
+                    icon = Icons.Rounded.DataUsage,
+                    title = "缓存管理",
+                    subtitle = "${formatBytes(stats.totalBytes)} · ${stats.itemCount} 个资源",
+                    onClick = onOpenCache,
+                    modifier = Modifier.weight(1f)
+                )
+                TvQuickTile(
+                    icon = Icons.Rounded.Settings,
+                    title = "设置",
+                    subtitle = "主题、权限与 TV 布局",
+                    onClick = onOpenSettings,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(28.dp))
+            Text(
+                "使用方向键移动焦点，按 OK 键打开 · 视频播放支持 4K / HEVC / AV1（取决于设备解码能力）",
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvCachePill(bytes: Long, count: Int, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+            .tvFocus(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Rounded.DataUsage,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "缓存 ${formatBytes(bytes)} · $count",
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+@Composable
+private fun TvSourceTile(
+    source: FileSource,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(26.dp)
+    Box(
+        modifier
+            .width(330.dp)
+            .height(196.dp)
+            .clip(shape)
+            .background(Brush.linearGradient(TomatoGradients.forSource(source.type)))
+            .tvFocus(shape, scaleUp = 1.05f)
+            .clickable(onClick = onClick)
+            .padding(20.dp)
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.20f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        sourceIcon(source.type),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(27.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    source.type.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White.copy(alpha = 0.82f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.16f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .tvFocus(CircleShape)
+                ) {
+                    Icon(
+                        Icons.Rounded.Edit,
+                        contentDescription = "编辑存储",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                source.name,
+                color = Color.White,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                source.summary(),
+                color = Color.White.copy(alpha = 0.72f),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvAddTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(26.dp)
+    Column(
+        modifier
+            .width(330.dp)
+            .height(196.dp)
+            .clip(shape)
+            .border(2.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .tvFocus(shape, scaleUp = 1.05f)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Rounded.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(44.dp)
+        )
+        Spacer(Modifier.height(10.dp))
+        Text("添加存储", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "WebDAV · SMB · FTP · 本机",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun TvQuickTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        modifier
+            .height(104.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+            .tvFocus(shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(50.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Icon(
+            Icons.Rounded.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

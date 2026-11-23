@@ -14,6 +14,14 @@
   - 文本 / 代码 / Markdown / JSON / 日志等，带行号、编码识别与 UTF-8 → GB18030 回退；
   - PDF 使用系统 `PdfRenderer` 逐页渲染；
   - DOCX / XLSX / PPTX（以及 ODT / ODS / ODP）离线提取文本预览，不依赖网络和第三方转换服务。
+- **视频与音频播放**：
+  - 基于 Media3 ExoPlayer，支持 MP4 / MKV / WebM 等常见视频容器与 MP3 / FLAC / OGG / M4A 等音频；
+  - 4K 视频不设分辨率上限，由设备硬件解码器直通解码，支持进度拖动、缓冲显示、熄屏保持；
+  - 本地与 WebDAV / FTP / SMB 远程文件均可直接播放，远程拖进度使用 HTTP Range / FTP REST / SMB 随机读取。
+- **Android TV 适配**：
+  - 提供 Leanback 启动入口与 TV 横幅，遥控器方向键焦点导航、放大高亮；
+  - TV 首页使用大卡片与遥控器焦点导航，播放器与图片查看器支持方向键操作；
+  - 设置中可手动开启「TV 大屏布局」，在手机 / 平板上预览电视界面。
 - **全屏图片浏览器**：
   - 同一目录下的所有图片自动组成可左右滑动的图片流；
   - 双指缩放、双击放大/还原、放大后拖动；
@@ -50,6 +58,7 @@
 | FTP | Apache Commons Net（FTP / 显式 FTPS） |
 | PDF | `android.graphics.pdf.PdfRenderer` |
 | Office | 自实现 OOXML / ODF ZIP+XML 文本提取 |
+| 播放 | Media3 ExoPlayer 1.6.1（视频 / 音频、4K 直通、远程 Range 流） |
 | 凭据 | Android Keystore + AES/GCM |
 | 缓存 | 自实现 LRU 文件缓存 + JSON 索引 |
 
@@ -63,6 +72,7 @@ app/src/main/java/com/cctomato/tomatofile/
 │   ├── fs/           本地 / WebDAV / SMB / FTP 客户端
 │   ├── image/        EXIF 元数据读取
 │   ├── model/        数据模型与文件类型分类
+│   ├── player/       Media3 自定义 DataSource（本地 / 远程 Range）
 │   ├── preview/      文本、Office、PDF 渲染
 │   ├── repo/         客户端管理与按需下载
 │   └── store/        存储配置与用户设置
@@ -72,10 +82,12 @@ app/src/main/java/com/cctomato/tomatofile/
 │   ├── components/   通用 Material 3 组件
 │   ├── home/         首页
 │   ├── nav/          路由与 Base64 路径编码
+│   ├── player/       视频 / 音频播放器
 │   ├── preview/      文本 / PDF / Office / 外部打开
 │   ├── settings/     主题、权限、缓存、关于
 │   ├── source/       添加 / 编辑存储
 │   ├── theme/        品牌配色与字体
+│   ├── tv/           TV 模式、焦点高亮与遥控器滚动
 │   └── viewer/       全屏图片浏览器与缩放手势
 └── util/             权限、格式化、链接、Intent 等工具
 ```

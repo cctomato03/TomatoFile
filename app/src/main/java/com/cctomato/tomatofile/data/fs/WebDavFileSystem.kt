@@ -68,27 +68,55 @@ class WebDavFileSystem(private val source: FileSource) : FileSystemClient {
         }
     }
 
-    override suspend fun openStream(path: String): InputStream = withContext(Dispatchers.IO) {
-        val relative = FsPaths.normalize(path).trim('/')
-        val url = if (relative.isEmpty()) {
-            baseUrl
-        } else {
-            baseUrl.resolve(relative) ?: throw FileSystemException("WebDAV 路径无效")
+    override suspend fun openStream(path: String): InputStream = openStream(path, 0L)
+
+    override suspend fun openStream(path: String, position: Long): InputStream =
+        withContext(Dispatchers.IO) {
+            val relative = FsPaths.normalize(path).trim('/')
+            val url = if (relative.isEmpty()) {
+                baseUrl
+            } else {
+                baseUrl.resolve(relative) ?: throw FileSystemException("WebDAV 路径无效")
+            }
+            val builder = Request.Builder()
+                .url(url)
+                .get()
+                .header("Accept-Encoding", "identity")
+                .applyAuth()
+            if (position > 0L) builder.header("Range", "bytes=$position-")
+            val response = client.newCall(builder.build()).execute()
+            if (response.code == 416) {
+                response.close()
+                throw FileSystemException("无法从该位置继续读取")
+            }
+            if (!response.isSuccessful) {
+                val code = response.code
+                val message = response.message
+                response.close()
+                throw FileSystemException(httpError(code, message))
+            }
+            val body = response.body ?: run {
+                response.close()
+                throw FileSystemException("服务器返回了空内容")
+            }
+            val stream = body.byteStream()
+            if (position > 0L && response.code == 200) {
+                // Some WebDAV servers ignore Range; skip the already-sent prefix instead.
+                var remaining = position
+                val buffer = ByteArray(16 * 1024)
+                while (remaining > 0L) {
+                    val skipped = stream.skip(remaining)
+                    if (skipped > 0L) {
+                        remaining -= skipped
+                        continue
+                    }
+                    val read = stream.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                    if (read < 0) break
+                    remaining -= read
+                }
+            }
+            ResponseInputStream(response, stream)
         }
-        val request = Request.Builder().url(url).get().applyAuth().build()
-        val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            val code = response.code
-            val message = response.message
-            response.close()
-            throw FileSystemException(httpError(code, message))
-        }
-        val body = response.body ?: run {
-            response.close()
-            throw FileSystemException("服务器返回了空内容")
-        }
-        ResponseInputStream(response, body.byteStream())
-    }
 
     override suspend fun close() {
         runCatching { client.dispatcher.executorService.shutdown() }

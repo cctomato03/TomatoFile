@@ -53,21 +53,25 @@ class FtpFileSystem(private val source: FileSource) : FileSystemClient {
         }
     }
 
-    override suspend fun openStream(path: String): InputStream = withContext(Dispatchers.IO) {
-        val ftp = createClient()
-        try {
-            connectAndLogin(ftp)
-            val remote = remotePath(path)
-            val stream = ftp.retrieveFileStream(remote)
-                ?: throw FileSystemException("FTP 文件读取失败：${ftp.replyString}")
-            FtpInputStream(ftp, stream)
-        } catch (t: Throwable) {
-            runCatching { ftp.logout() }
-            runCatching { ftp.disconnect() }
-            if (t is FileSystemException) throw t
-            throw FileSystemException("FTP 文件读取失败：${t.message}", t)
+    override suspend fun openStream(path: String): InputStream = openStream(path, 0L)
+
+    override suspend fun openStream(path: String, position: Long): InputStream =
+        withContext(Dispatchers.IO) {
+            val ftp = createClient()
+            try {
+                connectAndLogin(ftp)
+                if (position > 0L) ftp.setRestartOffset(position)
+                val remote = remotePath(path)
+                val stream = ftp.retrieveFileStream(remote)
+                    ?: throw FileSystemException("FTP 文件读取失败：${ftp.replyString}")
+                FtpInputStream(ftp, stream)
+            } catch (t: Throwable) {
+                runCatching { ftp.logout() }
+                runCatching { ftp.disconnect() }
+                if (t is FileSystemException) throw t
+                throw FileSystemException("FTP 文件读取失败：${t.message}", t)
+            }
         }
-    }
 
     override suspend fun close() = Unit
 

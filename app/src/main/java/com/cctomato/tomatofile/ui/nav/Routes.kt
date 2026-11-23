@@ -1,6 +1,6 @@
 package com.cctomato.tomatofile.ui.nav
 
-import android.util.Base64
+import com.cctomato.tomatofile.util.PathCodec
 
 /** Route helpers. Paths are Base64 (URL-safe) encoded so slashes and unicode never confuse nav. */
 object Routes {
@@ -9,6 +9,7 @@ object Routes {
     const val BROWSE = "browse/{sourceId}?path={path}"
     const val PREVIEW = "preview/{sourceId}?path={path}"
     const val VIEWER = "viewer/{sourceId}?path={path}"
+    const val PLAYER = "player/{sourceId}?path={path}"
     const val CACHE = "cache"
     const val SETTINGS = "settings"
 
@@ -16,27 +17,18 @@ object Routes {
         if (editId.isBlank()) "source" else "source?editId=$editId"
 
     fun browse(sourceId: String, path: String): String =
-        "browse/$sourceId?path=${encodePath(path)}"
+        "browse/$sourceId?path=${PathCodec.encode(path)}"
 
     fun preview(sourceId: String, path: String): String =
-        "preview/$sourceId?path=${encodePath(path)}"
+        "preview/$sourceId?path=${PathCodec.encode(path)}"
 
     fun viewer(sourceId: String, path: String): String =
-        "viewer/$sourceId?path=${encodePath(path)}"
+        "viewer/$sourceId?path=${PathCodec.encode(path)}"
 
-    fun encodePath(path: String): String =
-        Base64.encodeToString(
-            path.toByteArray(Charsets.UTF_8),
-            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
-        )
+    fun player(sourceId: String, path: String): String =
+        "player/$sourceId?path=${PathCodec.encode(path)}"
 
-    fun decodePath(raw: String?): String {
-        if (raw.isNullOrBlank()) return "/"
-        return runCatching {
-            String(
-                Base64.decode(raw, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING),
-                Charsets.UTF_8
-            )
-        }.getOrDefault("/")
-    }
+    fun encodePath(path: String): String = PathCodec.encode(path)
+
+    fun decodePath(raw: String?): String = PathCodec.decode(raw)
 }

@@ -82,6 +82,8 @@ import com.cctomato.tomatofile.ui.components.LoadingPane
 import com.cctomato.tomatofile.ui.components.RoundIconButton
 import com.cctomato.tomatofile.ui.components.ScreenTopBar
 import com.cctomato.tomatofile.ui.theme.TomatoAccents
+import com.cctomato.tomatofile.ui.tv.LocalTvMode
+import com.cctomato.tomatofile.ui.tv.tvFocus
 import com.cctomato.tomatofile.util.NaturalOrder
 import com.cctomato.tomatofile.util.StoragePermissions
 import com.cctomato.tomatofile.util.formatBytes
@@ -93,6 +95,7 @@ fun BrowseScreen(
     onBack: () -> Unit,
     onOpenPreview: (sourceId: String, path: String) -> Unit,
     onOpenViewer: (sourceId: String, path: String) -> Unit,
+    onOpenPlayer: (sourceId: String, path: String) -> Unit,
     viewModel: BrowseViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -173,6 +176,7 @@ fun BrowseScreen(
                         .size(40.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                        .tvFocus(CircleShape)
                         .clickable { viewModel.refresh() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -237,7 +241,10 @@ fun BrowseScreen(
                         source = source,
                         listState = listState,
                         onEntryClick = { entry ->
-                            handleEntryClick(source, entry, viewModel, onOpenPreview, onOpenViewer)
+                            handleEntryClick(
+                                source, entry, viewModel,
+                                onOpenPreview, onOpenViewer, onOpenPlayer
+                            )
                         }
                     )
                     else -> FileGrid(
@@ -245,7 +252,10 @@ fun BrowseScreen(
                         source = source,
                         gridState = gridState,
                         onEntryClick = { entry ->
-                            handleEntryClick(source, entry, viewModel, onOpenPreview, onOpenViewer)
+                            handleEntryClick(
+                                source, entry, viewModel,
+                                onOpenPreview, onOpenViewer, onOpenPlayer
+                            )
                         }
                     )
                 }
@@ -259,12 +269,15 @@ private fun handleEntryClick(
     entry: FileEntry,
     viewModel: BrowseViewModel,
     onOpenPreview: (String, String) -> Unit,
-    onOpenViewer: (String, String) -> Unit
+    onOpenViewer: (String, String) -> Unit,
+    onOpenPlayer: (String, String) -> Unit
 ) {
     if (source == null) return
     when {
         entry.isDirectory -> viewModel.open(entry.path)
         entry.kind == PreviewKind.IMAGE -> onOpenViewer(source.id, entry.path)
+        entry.kind == PreviewKind.AUDIO || entry.kind == PreviewKind.VIDEO ->
+            onOpenPlayer(source.id, entry.path)
         else -> onOpenPreview(source.id, entry.path)
     }
 }
@@ -318,6 +331,7 @@ private fun BreadcrumbChip(text: String, accent: Color, active: Boolean, onClick
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
             .background(if (active) accent else accent.copy(alpha = 0.10f))
+            .tvFocus(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp)
     )
@@ -331,6 +345,7 @@ private fun PermissionNotice(onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .tvFocus(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 13.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -396,6 +411,8 @@ private fun FileList(
 
 @Composable
 private fun FileRow(entry: FileEntry, source: FileSource?, onClick: () -> Unit) {
+    val tv = LocalTvMode.current
+    val iconSize = if (tv) 56.dp else 46.dp
     val surface = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
     Row(
         Modifier
@@ -407,16 +424,17 @@ private fun FileRow(entry: FileEntry, source: FileSource?, onClick: () -> Unit) 
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
                 RoundedCornerShape(20.dp)
             )
+            .tvFocus(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             Modifier
-                .size(46.dp)
+                .size(iconSize)
                 .clip(RoundedCornerShape(14.dp))
         ) {
-            EntryThumbnail(entry = entry, source = source, badgeSize = 46.dp)
+            EntryThumbnail(entry = entry, source = source, badgeSize = iconSize)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -453,8 +471,9 @@ private fun FileGrid(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     onEntryClick: (FileEntry) -> Unit
 ) {
+    val tv = LocalTvMode.current
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 106.dp),
+        columns = GridCells.Adaptive(minSize = if (tv) 180.dp else 106.dp),
         state = gridState,
         modifier = Modifier
             .fillMaxSize()
@@ -492,6 +511,7 @@ private fun GridCell(entry: FileEntry, source: FileSource?, onClick: () -> Unit)
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                 RoundedCornerShape(20.dp)
             )
+            .tvFocus(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
     ) {
         Box(

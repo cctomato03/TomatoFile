@@ -29,6 +29,9 @@ class SettingsStore(context: Context) {
     private val _sortMode = MutableStateFlow(SortMode.fromName(prefs.getString(KEY_SORT, null)))
     val sortMode: StateFlow<SortMode> = _sortMode.asStateFlow()
 
+    private val _forceTvLayout = MutableStateFlow(prefs.getBoolean(KEY_FORCE_TV, false))
+    val forceTvLayout: StateFlow<Boolean> = _forceTvLayout.asStateFlow()
+
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putString(KEY_THEME, mode.name).apply()
         _themeMode.value = mode
@@ -55,6 +58,11 @@ class SettingsStore(context: Context) {
         _sortMode.value = mode
     }
 
+    fun setForceTvLayout(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_FORCE_TV, enabled).apply()
+        _forceTvLayout.value = enabled
+    }
+
     val cacheLimitBytes: Long
         get() = if (_cacheLimitMb.value <= 0) Long.MAX_VALUE else _cacheLimitMb.value.toLong() * 1024L * 1024L
 
@@ -65,6 +73,7 @@ class SettingsStore(context: Context) {
         const val KEY_CACHE_LIMIT = "cache_limit_mb"
         const val KEY_VIEW = "view_mode"
         const val KEY_SORT = "sort_mode"
+        const val KEY_FORCE_TV = "force_tv_layout"
         const val DEFAULT_CACHE_MB = 512
     }
 }

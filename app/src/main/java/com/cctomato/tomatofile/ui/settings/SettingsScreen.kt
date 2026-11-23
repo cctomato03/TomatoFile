@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.SettingsBrightness
 import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -76,6 +77,7 @@ fun SettingsScreen(
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val dynamic by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val cacheLimitMb by viewModel.cacheLimitMb.collectAsStateWithLifecycle()
+    val forceTv by viewModel.forceTvLayout.collectAsStateWithLifecycle()
     var hasPermission by remember { mutableStateOf(StoragePermissions.hasAllFilesAccess(context)) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -136,6 +138,27 @@ fun SettingsScreen(
                                 checked = dynamic,
                                 onCheckedChange = viewModel::setDynamicColor,
                                 enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                            )
+                        }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SettingIcon(Icons.Rounded.Tv, MaterialTheme.colorScheme.secondary)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("TV 大屏布局", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    "大焦点与遥控器导航；Android TV 会自动启用，也可在手机上预览",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = forceTv,
+                                onCheckedChange = viewModel::setForceTvLayout
                             )
                         }
                     }

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.cctomato.tomatofile.ui.AppNav
 import com.cctomato.tomatofile.ui.theme.TomatoTheme
+import com.cctomato.tomatofile.ui.tv.ProvideTvMode
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -13,7 +14,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TomatoTheme {
-                AppNav()
+                ProvideTvMode {
+                    AppNav()
+                }
             }
         }
     }

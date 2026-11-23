@@ -96,6 +96,8 @@ jobs:
             ### 功能
             - 本地目录、WebDAV、SMB 2/3、FTP / FTPS 统一浏览
             - 文本、PDF、Word / Excel / PowerPoint 文本预览
+            - 视频 / 音频播放：MP4、MKV、WebM、MP3、FLAC、OGG、M4A，支持 4K 直通与远程 Range 拖动
+            - Android TV：Leanback 入口、遥控器焦点导航、TV 大屏布局
             - 全屏图片浏览器：左右滑动、双指缩放、双击放大
             - 图片加载后右下角链接按钮：读取 EXIF 作者并打开系统链接
             - 网络文件 LRU 磁盘缓存，可查看占用并一键清理

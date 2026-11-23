@@ -11,8 +11,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val themeMode: StateFlow<ThemeMode> = settings.themeMode
     val dynamicColor: StateFlow<Boolean> = settings.dynamicColor
     val cacheLimitMb: StateFlow<Int> = settings.cacheLimitMb
+    val forceTvLayout: StateFlow<Boolean> = settings.forceTvLayout
 
     fun setThemeMode(mode: ThemeMode) = settings.setThemeMode(mode)
     fun setDynamicColor(enabled: Boolean) = settings.setDynamicColor(enabled)
     fun setCacheLimit(mb: Int) = settings.setCacheLimitMb(mb)
+    fun setForceTvLayout(enabled: Boolean) = settings.setForceTvLayout(enabled)
 }

@@ -14,6 +14,7 @@ import com.cctomato.tomatofile.ui.browse.BrowseScreen
 import com.cctomato.tomatofile.ui.cache.CacheScreen
 import com.cctomato.tomatofile.ui.home.HomeScreen
 import com.cctomato.tomatofile.ui.nav.Routes
+import com.cctomato.tomatofile.ui.player.PlayerScreen
 import com.cctomato.tomatofile.ui.preview.PreviewScreen
 import com.cctomato.tomatofile.ui.settings.SettingsScreen
 import com.cctomato.tomatofile.ui.source.AddSourceScreen
@@ -82,8 +83,24 @@ fun AppNav() {
                 },
                 onOpenViewer = { sourceId, path ->
                     navController.navigate(Routes.viewer(sourceId, path))
+                },
+                onOpenPlayer = { sourceId, path ->
+                    navController.navigate(Routes.player(sourceId, path))
                 }
             )
+        }
+
+        composable(
+            route = Routes.PLAYER,
+            arguments = listOf(
+                navArgument("sourceId") { type = NavType.StringType },
+                navArgument("path") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) {
+            PlayerScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

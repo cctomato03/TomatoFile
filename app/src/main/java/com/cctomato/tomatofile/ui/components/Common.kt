@@ -60,6 +60,8 @@ import com.cctomato.tomatofile.data.model.PreviewKind
 import com.cctomato.tomatofile.data.model.SourceType
 import com.cctomato.tomatofile.ui.theme.TomatoAccents
 import com.cctomato.tomatofile.ui.theme.TomatoGradients
+import com.cctomato.tomatofile.ui.tv.LocalTvMode
+import com.cctomato.tomatofile.ui.tv.tvFocus
 
 @Composable
 fun AppBackground(content: @Composable () -> Unit) {
@@ -95,7 +97,10 @@ fun ScreenTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (onBack != null) {
-            IconButton(onClick = onBack) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.tvFocus(CircleShape)
+            ) {
                 Icon(
                     Icons.Rounded.ArrowBack,
                     contentDescription = "返回",
@@ -138,15 +143,23 @@ fun RoundIconButton(
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     background: Color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
 ) {
+    val tv = LocalTvMode.current
+    val buttonSize = if (tv) 48.dp else 40.dp
     Box(
         Modifier
-            .size(40.dp)
+            .size(buttonSize)
             .clip(CircleShape)
             .background(background)
+            .tvFocus(CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(21.dp))
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(if (tv) 24.dp else 21.dp)
+        )
     }
 }
 
@@ -237,11 +250,13 @@ fun GradientButton(
             )
         )
     }
+    val tv = LocalTvMode.current
     Box(
         modifier
-            .height(52.dp)
+            .height(if (tv) 60.dp else 52.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(gradient)
+            .tvFocus(RoundedCornerShape(18.dp))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

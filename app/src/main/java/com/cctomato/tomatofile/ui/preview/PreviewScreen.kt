@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -78,6 +79,7 @@ import com.cctomato.tomatofile.ui.components.RoundIconButton
 import com.cctomato.tomatofile.ui.components.ScreenTopBar
 import com.cctomato.tomatofile.ui.components.kindIcon
 import com.cctomato.tomatofile.ui.theme.TomatoAccents
+import com.cctomato.tomatofile.ui.tv.tvScrollKeys
 import com.cctomato.tomatofile.util.ExternalIntents
 import com.cctomato.tomatofile.util.formatBytes
 import com.cctomato.tomatofile.util.formatDate
@@ -218,6 +220,7 @@ fun PreviewScreen(
 
 @Composable
 private fun TextPreview(content: com.cctomato.tomatofile.data.preview.TextContent, truncatedMessage: String) {
+    val scrollState = rememberLazyListState()
     if (content.binary) {
         EmptyState(
             title = "无法以文本预览",
@@ -263,7 +266,10 @@ private fun TextPreview(content: com.cctomato.tomatofile.data.preview.TextConten
             }
         }
         LazyColumn(
-            Modifier.fillMaxSize(),
+            Modifier
+                .fillMaxSize()
+                .tvScrollKeys(scrollState),
+            state = scrollState,
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
         ) {
             items(lines.size) { index ->
@@ -303,6 +309,7 @@ private fun TextPreview(content: com.cctomato.tomatofile.data.preview.TextConten
 @Composable
 private fun OfficeTextPreview(text: String, kind: PreviewKind) {
     val lines = remember(text) { text.split('\n') }
+    val scrollState = rememberLazyListState()
     Column(
         Modifier
             .fillMaxSize()
@@ -326,7 +333,10 @@ private fun OfficeTextPreview(text: String, kind: PreviewKind) {
             )
         }
         LazyColumn(
-            Modifier.fillMaxSize(),
+            Modifier
+                .fillMaxSize()
+                .tvScrollKeys(scrollState),
+            state = scrollState,
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)
         ) {
             items(lines.size) { index ->
@@ -350,6 +360,7 @@ private fun OfficeTextPreview(text: String, kind: PreviewKind) {
 @Composable
 private fun PdfPreview(file: File, expectedPages: Int) {
     val result = remember(file) { runCatching { PdfPageRenderer(file) } }
+    val scrollState = rememberLazyListState()
     val renderer = result.getOrNull()
     DisposableEffect(renderer) {
         onDispose { renderer?.close() }
@@ -361,7 +372,9 @@ private fun PdfPreview(file: File, expectedPages: Int) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .navigationBarsPadding(),
+            .navigationBarsPadding()
+            .tvScrollKeys(scrollState),
+        state = scrollState,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {

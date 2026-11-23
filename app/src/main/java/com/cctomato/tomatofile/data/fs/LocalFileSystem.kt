@@ -29,11 +29,16 @@ class LocalFileSystem(private val source: FileSource) : FileSystemClient {
         }
     }
 
-    override suspend fun openStream(path: String): InputStream = withContext(Dispatchers.IO) {
-        val file = resolve(path)
-        if (!file.isFile) throw FileNotFoundException("文件不存在")
-        FileInputStream(file)
-    }
+    override suspend fun openStream(path: String): InputStream = openStream(path, 0L)
+
+    override suspend fun openStream(path: String, position: Long): InputStream =
+        withContext(Dispatchers.IO) {
+            val file = resolve(path)
+            if (!file.isFile) throw FileNotFoundException("文件不存在")
+            FileInputStream(file).apply {
+                if (position > 0L) channel.position(position)
+            }
+        }
 
     override suspend fun close() = Unit
 
