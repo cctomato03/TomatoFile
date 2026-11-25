@@ -98,7 +98,7 @@ jobs:
             - 文本、PDF、Word / Excel / PowerPoint 文本预览
             - libVLC 全能视频：WMV / AVI / RMVB / TS / M2TS / FLV / MP4 / MKV / WebM，支持 4K、手势快进、字幕/音轨切换、0.5x–3x 倍速
             - 本地音乐播放器：当前目录播放列表、上/下一首、专辑封面、在线歌词
-            - Android TV：Leanback 入口、遥控器焦点导航、TV 大屏布局
+            - Android TV：Leanback 入口、遥控器焦点导航、TV 大屏布局；添加存储支持手机扫码填写并自动回显
             - 全屏图片浏览器：左右滑动、双指缩放、双击放大
             - 图片加载后右下角链接按钮：读取 EXIF 作者并打开系统链接
             - 网络文件 LRU 磁盘缓存，可查看占用并一键清理

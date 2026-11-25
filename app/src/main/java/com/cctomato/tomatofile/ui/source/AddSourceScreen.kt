@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,7 +46,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +75,7 @@ import com.cctomato.tomatofile.ui.components.SourceBadge
 import com.cctomato.tomatofile.ui.components.sourceIcon
 import com.cctomato.tomatofile.ui.theme.TomatoAccents
 import com.cctomato.tomatofile.ui.theme.TomatoGradients
+import com.cctomato.tomatofile.ui.tv.LocalTvMode
 import java.io.File
 
 @Composable
@@ -86,6 +90,53 @@ fun AddSourceScreen(
     val saving by viewModel.saving.collectAsStateWithLifecycle()
     var passwordVisible by remember { mutableStateOf(false) }
     val appContext = androidx.compose.ui.platform.LocalContext.current
+    val tv = LocalTvMode.current
+    var bridge by remember { mutableStateOf<SourceBridgeServer?>(null) }
+    var bridgeReceived by remember { mutableStateOf(false) }
+    var bridgeError by remember { mutableStateOf<String?>(null) }
+
+    fun closeBridge() {
+        bridge?.stop()
+        bridge = null
+        bridgeReceived = false
+        bridgeError = null
+    }
+
+    fun openBridge() {
+        bridge?.stop()
+        bridgeReceived = false
+        bridgeError = null
+        val server = SourceBridgeServer.start(appContext) { draft ->
+            val type = runCatching { SourceType.valueOf(draft.type) }
+                .getOrDefault(SourceType.WEBDAV)
+            viewModel.update { current ->
+                current.copy(
+                    type = type,
+                    name = draft.name,
+                    localPath = draft.localPath,
+                    url = draft.url,
+                    host = draft.host,
+                    port = draft.port,
+                    share = draft.share,
+                    rootPath = draft.rootPath,
+                    domain = draft.domain,
+                    username = draft.username,
+                    password = draft.password,
+                    secure = draft.secure
+                )
+            }
+            bridgeReceived = true
+        }
+        if (server == null) {
+            bridgeError = "无法启动手机填写服务，请检查网络后重试"
+        } else {
+            bridge = server
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { bridge?.stop() }
+    }
 
     val localRoot = remember {
         Environment.getExternalStorageDirectory()?.absolutePath ?: "/storage/emulated/0"
@@ -127,6 +178,23 @@ fun AddSourceScreen(
                                 }
                             }
                         )
+                    }
+                    if (tv && !viewModel.isEditing) {
+                        item {
+                            OutlinedButton(
+                                onClick = { openBridge() },
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Link,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("手机扫码填写参数")
+                            }
+                        }
                     }
                     item {
                         FormField(
@@ -412,6 +480,51 @@ fun AddSourceScreen(
                 }
             }
         }
+    }
+
+    if (bridge != null || bridgeError != null) {
+        AlertDialog(
+            onDismissRequest = { closeBridge() },
+            title = { Text("手机扫码填写") },
+            text = {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    val url = bridge?.pageUrl.orEmpty()
+                    if (url.isNotBlank()) {
+                        QrCode(content = url, size = 220)
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            url,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            if (bridgeReceived) {
+                                "已收到手机提交，参数已回显，请核对后保存"
+                            } else {
+                                "用手机相机扫码，在同一局域网内填写并提交"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (bridgeReceived) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    } else {
+                        Text(bridgeError ?: "未获取到局域网 IP，请检查网络连接")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { closeBridge() }) { Text("关闭") }
+            }
+        )
     }
 }
 
