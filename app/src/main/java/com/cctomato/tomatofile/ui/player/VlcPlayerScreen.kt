@@ -93,9 +93,15 @@ private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
 @Composable
 fun VlcPlayerScreen(
     onBack: () -> Unit,
+    mediaType: String = "auto",
     viewModel: VlcPlayerViewModel = viewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val videoMode = when (mediaType) {
+        "video" -> true
+        "audio" -> false
+        else -> state.isVideo
+    }
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     var controlsVisible by remember { mutableStateOf(true) }
@@ -120,14 +126,14 @@ fun VlcPlayerScreen(
         }
     }
 
-    LaunchedEffect(state.isVideo, activity) {
-        if (state.isVideo) {
+    LaunchedEffect(videoMode, activity) {
+        if (videoMode) {
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         }
     }
 
-    LaunchedEffect(controlsVisible, state.playing, state.isVideo) {
-        if (controlsVisible && state.playing && state.isVideo) {
+    LaunchedEffect(controlsVisible, state.playing, videoMode) {
+        if (controlsVisible && state.playing && videoMode) {
             delay(4000L)
             controlsVisible = false
         }
@@ -169,7 +175,7 @@ fun VlcPlayerScreen(
                 )
             }
     ) {
-        if (state.isVideo) {
+        if (videoMode) {
             AndroidView(
                 factory = { ctx ->
                     VLCVideoLayout(ctx).also { viewModel.attachVideo(it) }
@@ -213,69 +219,80 @@ fun VlcPlayerScreen(
         }
 
         AnimatedVisibility(
-            visible = controlsVisible || !state.isVideo,
+            visible = controlsVisible || !videoMode,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
             Box(Modifier.fillMaxSize()) {
                 PlayerTopBar(
                     state = state,
+                    videoMode = videoMode,
                     onBack = onBack,
                     onSpeed = { showSpeed = true },
                     onAudio = { showAudio = true },
-                    onSubtitle = { showSubtitle = true },
-                    onPlaylist = { showPlaylist = true },
-                    onLyrics = { showLyrics = true }
+                    onSubtitle = { showSubtitle = true }
                 )
 
-                Row(
-                    Modifier
-                        .align(Alignment.Center)
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (state.isVideo) {
+                if (videoMode) {
+                    Row(
+                        Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         RoundControl(Icons.Rounded.Replay10, "快退 10 秒", 58) {
                             viewModel.seekBy(-10_000L)
                         }
-                    } else {
-                        RoundControl(Icons.Rounded.SkipPrevious, "上一首", 54) {
-                            viewModel.previous()
+                        RoundControl(
+                            if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            if (state.playing) "暂停" else "播放",
+                            82
+                        ) {
+                            controlsVisible = true
+                            viewModel.togglePlayPause()
                         }
-                    }
-                    RoundControl(
-                        if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        if (state.playing) "暂停" else "播放",
-                        if (state.isVideo) 82 else 70
-                    ) {
-                        controlsVisible = true
-                        viewModel.togglePlayPause()
-                    }
-                    if (state.isVideo) {
                         RoundControl(Icons.Rounded.Forward10, "快进 10 秒", 58) {
                             viewModel.seekBy(10_000L)
-                        }
-                    } else {
-                        RoundControl(Icons.Rounded.SkipNext, "下一首", 54) {
-                            viewModel.next()
                         }
                     }
                 }
 
-                PlayerBottomBar(
-                    state = state,
-                    sliderPosition = sliderPosition,
-                    onSliderPosition = {
-                        sliderPosition = it
-                        controlsVisible = true
-                    },
-                    onSeekFinished = {
-                        sliderPosition?.let { viewModel.seekTo(it.toLong()) }
-                        sliderPosition = null
-                    },
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                )
+                if (videoMode) {
+                    PlayerBottomBar(
+                        state = state,
+                        sliderPosition = sliderPosition,
+                        onSliderPosition = {
+                            sliderPosition = it
+                            controlsVisible = true
+                        },
+                        onSeekFinished = {
+                            sliderPosition?.let { viewModel.seekTo(it.toLong()) }
+                            sliderPosition = null
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                } else {
+                    AudioBottomBar(
+                        state = state,
+                        sliderPosition = sliderPosition,
+                        onSliderPosition = {
+                            sliderPosition = it
+                            controlsVisible = true
+                        },
+                        onSeekFinished = {
+                            sliderPosition?.let { viewModel.seekTo(it.toLong()) }
+                            sliderPosition = null
+                        },
+                        onSpeed = { showSpeed = true },
+                        onPlaylist = { showPlaylist = true },
+                        onLyrics = { showLyrics = true },
+                        onPrev = { viewModel.previous() },
+                        onToggle = { viewModel.togglePlayPause() },
+                        onNext = { viewModel.next() },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
             }
         }
     }
@@ -420,12 +437,11 @@ private fun AudioBackdrop(state: VlcPlayerUiState) {
 @Composable
 private fun PlayerTopBar(
     state: VlcPlayerUiState,
+    videoMode: Boolean,
     onBack: () -> Unit,
     onSpeed: () -> Unit,
     onAudio: () -> Unit,
-    onSubtitle: () -> Unit,
-    onPlaylist: () -> Unit,
-    onLyrics: () -> Unit
+    onSubtitle: () -> Unit
 ) {
     Row(
         Modifier
@@ -459,12 +475,9 @@ private fun PlayerTopBar(
             )
         }
         TopChip(formatSpeed(state.speed), onSpeed)
-        if (state.isVideo) {
+        if (videoMode) {
             TopChip("音轨", onAudio)
             TopChip("字幕", onSubtitle)
-        } else {
-            TopChip("列表", onPlaylist)
-            TopChip("歌词", onLyrics)
         }
     }
 }
@@ -476,6 +489,82 @@ private fun TopChip(label: String, onClick: () -> Unit) {
         colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+@Composable
+private fun AudioBottomBar(
+    state: VlcPlayerUiState,
+    sliderPosition: Float?,
+    onSliderPosition: (Float) -> Unit,
+    onSeekFinished: () -> Unit,
+    onSpeed: () -> Unit,
+    onPlaylist: () -> Unit,
+    onLyrics: () -> Unit,
+    onPrev: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val duration = state.durationMs
+    val shown = sliderPosition ?: state.positionMs.toFloat()
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.88f))
+                )
+            )
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Slider(
+            value = shown.coerceIn(0f, maxOf(duration.toFloat(), 1f)),
+            onValueChange = onSliderPosition,
+            onValueChangeFinished = onSeekFinished,
+            valueRange = 0f..maxOf(duration.toFloat(), 1f),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = Color.White.copy(alpha = 0.24f)
+            )
+        )
+        Row(Modifier.fillMaxWidth()) {
+            Text(
+                formatMs(shown.toLong()),
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.labelMedium
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                formatMs(duration),
+                color = Color.White.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(22.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RoundControl(Icons.Rounded.SkipPrevious, "上一首", 52, onPrev)
+            RoundControl(
+                if (state.playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                if (state.playing) "暂停" else "播放",
+                72,
+                onToggle
+            )
+            RoundControl(Icons.Rounded.SkipNext, "下一首", 52, onNext)
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TopChip("倍速 ${formatSpeed(state.speed)}", onSpeed)
+            TopChip("列表", onPlaylist)
+            TopChip("歌词", onLyrics)
+        }
     }
 }
 

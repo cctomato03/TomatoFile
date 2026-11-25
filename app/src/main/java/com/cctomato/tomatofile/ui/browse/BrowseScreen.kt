@@ -95,7 +95,7 @@ fun BrowseScreen(
     onBack: () -> Unit,
     onOpenPreview: (sourceId: String, path: String) -> Unit,
     onOpenViewer: (sourceId: String, path: String) -> Unit,
-    onOpenPlayer: (sourceId: String, path: String) -> Unit,
+    onOpenPlayer: (sourceId: String, path: String, isVideo: Boolean) -> Unit,
     viewModel: BrowseViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -271,14 +271,14 @@ private fun handleEntryClick(
     viewModel: BrowseViewModel,
     onOpenPreview: (String, String) -> Unit,
     onOpenViewer: (String, String) -> Unit,
-    onOpenPlayer: (String, String) -> Unit
+    onOpenPlayer: (String, String, Boolean) -> Unit
 ) {
     if (source == null) return
     when {
         entry.isDirectory -> viewModel.open(entry.path)
         entry.kind == PreviewKind.IMAGE -> onOpenViewer(source.id, entry.path)
         entry.kind == PreviewKind.AUDIO || entry.kind == PreviewKind.VIDEO ->
-            onOpenPlayer(source.id, entry.path)
+            onOpenPlayer(source.id, entry.path, entry.kind == PreviewKind.VIDEO)
         else -> onOpenPreview(source.id, entry.path)
     }
 }

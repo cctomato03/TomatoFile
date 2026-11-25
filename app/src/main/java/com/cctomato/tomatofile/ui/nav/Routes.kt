@@ -9,7 +9,7 @@ object Routes {
     const val BROWSE = "browse/{sourceId}?path={path}"
     const val PREVIEW = "preview/{sourceId}?path={path}"
     const val VIEWER = "viewer/{sourceId}?path={path}"
-    const val PLAYER = "player/{sourceId}?path={path}"
+    const val PLAYER = "player/{sourceId}?path={path}&kind={kind}"
     const val CACHE = "cache"
     const val SETTINGS = "settings"
 
@@ -25,8 +25,8 @@ object Routes {
     fun viewer(sourceId: String, path: String): String =
         "viewer/$sourceId?path=${PathCodec.encode(path)}"
 
-    fun player(sourceId: String, path: String): String =
-        "player/$sourceId?path=${PathCodec.encode(path)}"
+    fun player(sourceId: String, path: String, kind: String): String =
+        "player/$sourceId?path=${PathCodec.encode(path)}&kind=$kind"
 
     fun encodePath(path: String): String = PathCodec.encode(path)
 

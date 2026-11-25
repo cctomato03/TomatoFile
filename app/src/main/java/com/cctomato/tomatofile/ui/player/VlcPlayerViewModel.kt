@@ -79,6 +79,7 @@ class VlcPlayerViewModel(
     private val container = application.tomatoContainer
     private val sourceId: String = savedStateHandle.get<String>("sourceId").orEmpty()
     private val path: String = Routes.decodePath(savedStateHandle.get<String>("path"))
+    private val requestedKind: String = savedStateHandle.get<String>("kind") ?: "auto"
     private val app = getApplication<Application>()
 
     private val libVlc = LibVLC(
@@ -102,6 +103,8 @@ class VlcPlayerViewModel(
     private var videoLayout: VLCVideoLayout? = null
     private var infoJob: Job? = null
     private var lyricsJob: Job? = null
+    private var durationJob: Job? = null
+    private var fallbackDurationMs = 0L
     private val http = OkHttpClient()
 
     init {
@@ -139,7 +142,8 @@ class VlcPlayerViewModel(
             val siblings = runCatching {
                 container.repository.list(source, FsPaths.parent(path))
             }.getOrDefault(emptyList())
-            val isVideo = entry.kind == PreviewKind.VIDEO
+            val isVideo = requestedKind == "video" ||
+                (requestedKind == "auto" && entry.kind == PreviewKind.VIDEO)
             val audioEntries = if (isVideo) emptyList() else siblings
                 .filter { it.kind == PreviewKind.AUDIO }
                 .sortedWith(compareBy<FileEntry> { it.name.lowercase() })
@@ -180,6 +184,10 @@ class VlcPlayerViewModel(
         currentEntry = entry
         infoJob?.cancel()
         lyricsJob?.cancel()
+        durationJob?.cancel()
+        fallbackDurationMs = 0L
+        val video = requestedKind == "video" ||
+            (requestedKind == "auto" && entry.kind == PreviewKind.VIDEO)
 
         val media = try {
             buildMedia(source, entry)
@@ -205,7 +213,7 @@ class VlcPlayerViewModel(
             it.copy(
                 loading = false,
                 title = if (entry.kind == PreviewKind.VIDEO) entry.name.substringBeforeLast('.') else entry.name,
-                isVideo = entry.kind == PreviewKind.VIDEO,
+                isVideo = video,
                 playing = false,
                 buffering = true,
                 positionMs = 0L,
@@ -227,7 +235,9 @@ class VlcPlayerViewModel(
             )
         }
 
-        if (entry.kind != PreviewKind.VIDEO) {
+        if (video) {
+            loadVideoDuration(source, entry)
+        } else {
             loadAudioInfo(source, entry)
         }
     }
@@ -318,7 +328,8 @@ class VlcPlayerViewModel(
 
     private fun syncProgress() {
         if (mediaPlayer.isReleased) return
-        val duration = mediaPlayer.length.coerceAtLeast(0L)
+        val nativeDuration = mediaPlayer.length.coerceAtLeast(0L)
+        val duration = nativeDuration.takeIf { it > 0L } ?: fallbackDurationMs
         val position = mediaPlayer.time.coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE)
         _state.update {
             it.copy(
@@ -360,11 +371,37 @@ class VlcPlayerViewModel(
         }
     }
 
+    private fun loadVideoDuration(source: FileSource, entry: FileEntry) {
+        if (source.type != SourceType.LOCAL) return
+        durationJob = viewModelScope.launch {
+            val file = withContext(Dispatchers.IO) {
+                runCatching { container.repository.localFile(source, entry) }.getOrNull()
+            } ?: return@launch
+            val retriever = MediaMetadataRetriever()
+            val duration = try {
+                retriever.setDataSource(file.absolutePath)
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    ?.toLongOrNull() ?: 0L
+            } catch (_: Throwable) {
+                0L
+            } finally {
+                retriever.release()
+            }
+            if (currentEntry?.path != entry.path || duration <= 0L) return@launch
+            fallbackDurationMs = duration
+            _state.update {
+                it.copy(durationMs = if (it.durationMs > 0L) it.durationMs else duration)
+            }
+        }
+    }
+
     private fun loadAudioInfo(source: FileSource, entry: FileEntry) {
+        val targetPath = entry.path
         infoJob = viewModelScope.launch {
             val file = runCatching {
                 withContext(Dispatchers.IO) { container.repository.localFile(source, entry) }
             }.getOrNull()
+            if (currentEntry?.path != targetPath) return@launch
             var title = entry.name
             var artist = ""
             var album = ""
@@ -387,6 +424,7 @@ class VlcPlayerViewModel(
                     retriever.release()
                 }
             }
+            if (currentEntry?.path != targetPath) return@launch
             _state.update {
                 it.copy(
                     title = title,
@@ -512,7 +550,9 @@ class VlcPlayerViewModel(
 
     override fun onCleared() {
         infoJob?.cancel()
+        infoJob?.cancel()
         lyricsJob?.cancel()
+        durationJob?.cancel()
         runCatching { mediaPlayer.stop() }
         runCatching { mediaPlayer.detachViews() }
         runCatching { mediaPlayer.release() }

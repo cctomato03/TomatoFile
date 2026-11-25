@@ -16,8 +16,15 @@ object FileKinds {
         "properties", "gradle", "sql", "csv", "tsv", "srt", "vtt", "tex", "diff", "patch",
         "gitignore", "editorconfig", "dockerfile", "makefile", "pro", "env", "lock", "rtf"
     )
-    private val audioExtensions = setOf("mp3", "wav", "flac", "aac", "ogg", "m4a", "opus", "wma")
-    private val videoExtensions = setOf("mp4", "mkv", "webm", "avi", "mov", "3gp", "m4v", "ts")
+    private val audioExtensions = setOf(
+        "mp3", "wav", "flac", "aac", "ogg", "oga", "m4a", "m4b", "opus", "wma", "ape",
+        "alac", "aiff", "aif", "amr", "mid", "midi", "mka", "wv"
+    )
+    private val videoExtensions = setOf(
+        "mp4", "mkv", "webm", "avi", "mov", "3gp", "3g2", "m4v", "ts", "m2ts", "mts",
+        "wmv", "rmvb", "rm", "flv", "mpg", "mpeg", "m2v", "m1v", "vob", "asf", "ogv",
+        "divx", "f4v", "mxf"
+    )
     private val archiveExtensions = setOf(
         "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "apk", "jar", "iso", "tgz"
     )

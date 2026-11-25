@@ -84,8 +84,8 @@ fun AppNav() {
                 onOpenViewer = { sourceId, path ->
                     navController.navigate(Routes.viewer(sourceId, path))
                 },
-                onOpenPlayer = { sourceId, path ->
-                    navController.navigate(Routes.player(sourceId, path))
+                onOpenPlayer = { sourceId, path, isVideo ->
+                    navController.navigate(Routes.player(sourceId, path, if (isVideo) "video" else "audio"))
                 }
             )
         }
@@ -97,10 +97,17 @@ fun AppNav() {
                 navArgument("path") {
                     type = NavType.StringType
                     defaultValue = ""
+                },
+                navArgument("kind") {
+                    type = NavType.StringType
+                    defaultValue = "auto"
                 }
             )
-        ) {
-            VlcPlayerScreen(onBack = { navController.popBackStack() })
+        ) { entry ->
+            VlcPlayerScreen(
+                mediaType = entry.arguments?.getString("kind") ?: "auto",
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(
