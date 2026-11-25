@@ -14,7 +14,7 @@ import com.cctomato.tomatofile.ui.browse.BrowseScreen
 import com.cctomato.tomatofile.ui.cache.CacheScreen
 import com.cctomato.tomatofile.ui.home.HomeScreen
 import com.cctomato.tomatofile.ui.nav.Routes
-import com.cctomato.tomatofile.ui.player.PlayerScreen
+import com.cctomato.tomatofile.ui.player.VlcPlayerScreen
 import com.cctomato.tomatofile.ui.preview.PreviewScreen
 import com.cctomato.tomatofile.ui.settings.SettingsScreen
 import com.cctomato.tomatofile.ui.source.AddSourceScreen
@@ -100,7 +100,7 @@ fun AppNav() {
                 }
             )
         ) {
-            PlayerScreen(onBack = { navController.popBackStack() })
+            VlcPlayerScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

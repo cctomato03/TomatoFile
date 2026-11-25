@@ -14,10 +14,15 @@
   - 文本 / 代码 / Markdown / JSON / 日志等，带行号、编码识别与 UTF-8 → GB18030 回退；
   - PDF 使用系统 `PdfRenderer` 逐页渲染；
   - DOCX / XLSX / PPTX（以及 ODT / ODS / ODP）离线提取文本预览，不依赖网络和第三方转换服务。
-- **视频与音频播放**：
-  - 基于 Media3 ExoPlayer，支持 MP4 / MKV / WebM 等常见视频容器与 MP3 / FLAC / OGG / M4A 等音频；
-  - 4K 视频不设分辨率上限，由设备硬件解码器直通解码，支持进度拖动、缓冲显示、熄屏保持；
-  - 本地与 WebDAV / FTP / SMB 远程文件均可直接播放，远程拖进度使用 HTTP Range / FTP REST / SMB 随机读取。
+- **全能视频播放**：
+  - 基于 libVLC 软件解码，覆盖 WMV / AVI / RMVB / TS / M2TS / FLV / MP4 / MKV / WebM 等常见与桌面容器；
+  - 4K 视频不设分辨率上限，优先硬件解码，失败时自动回退软件解码；
+  - 手机端支持左右拖动快进/快退、±10 秒按钮、0.5x–3x 倍速；
+  - 支持视频内置音轨与字幕轨切换，可关闭字幕；本地与 WebDAV / FTP / SMB 远程文件均可直接播放。
+- **本地音乐播放器**：
+  - 自动把当前目录下的音乐组成播放列表，支持上一首 / 下一首与自动续播；
+  - 读取音频内置标题、艺术家、专辑与专辑封面，无封面时使用品牌占位图；
+  - 在线匹配歌词（LRCLIB），支持播放速度调节与沉浸式播放界面。
 - **Android TV 适配**：
   - 提供 Leanback 启动入口与 TV 横幅，遥控器方向键焦点导航、放大高亮；
   - TV 首页使用大卡片与遥控器焦点导航，播放器与图片查看器支持方向键操作；
@@ -58,7 +63,7 @@
 | FTP | Apache Commons Net（FTP / 显式 FTPS） |
 | PDF | `android.graphics.pdf.PdfRenderer` |
 | Office | 自实现 OOXML / ODF ZIP+XML 文本提取 |
-| 播放 | Media3 ExoPlayer 1.6.1（视频 / 音频、4K 直通、远程 Range 流） |
+| 播放 | libVLC 3.6.5 软件解码（全格式视频 + 音频、字幕/音轨/倍速） |
 | 凭据 | Android Keystore + AES/GCM |
 | 缓存 | 自实现 LRU 文件缓存 + JSON 索引 |
 
@@ -72,7 +77,6 @@ app/src/main/java/com/cctomato/tomatofile/
 │   ├── fs/           本地 / WebDAV / SMB / FTP 客户端
 │   ├── image/        EXIF 元数据读取
 │   ├── model/        数据模型与文件类型分类
-│   ├── player/       Media3 自定义 DataSource（本地 / 远程 Range）
 │   ├── preview/      文本、Office、PDF 渲染
 │   ├── repo/         客户端管理与按需下载
 │   └── store/        存储配置与用户设置

@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -19,6 +19,10 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         vectorDrawables.useSupportLibrary = true
+        ndk {
+            // x86 (32-bit) is not needed on phones/TVs and would add another ~50 MB.
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
         resourceConfigurations += listOf("zh", "en")
     }
 
@@ -62,7 +66,6 @@ android {
             "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
             "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=androidx.media3.common.util.UnstableApi"
         )
     }
 
@@ -115,8 +118,11 @@ dependencies {
 
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
-    implementation("androidx.media3:media3-exoplayer:1.6.1")
-    implementation("androidx.media3:media3-ui:1.6.1")
+    // libVLC provides the software decoders needed by WMV / AVI / RMVB / TS / M2TS and
+    // other containers that Android's platform decoders do not cover.
+    implementation(files("libs/libvlc-all-3.6.5.aar"))
+    implementation("androidx.annotation:annotation:1.7.1")
+    implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("io.coil-kt:coil-gif:2.7.0")
