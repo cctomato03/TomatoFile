@@ -13,6 +13,7 @@ import com.cctomato.tomatofile.data.model.FileSource
 import com.cctomato.tomatofile.data.model.FsPaths
 import com.cctomato.tomatofile.data.model.PreviewKind
 import com.cctomato.tomatofile.data.model.SourceType
+import com.cctomato.tomatofile.data.player.MpegTsDuration
 import com.cctomato.tomatofile.tomatoContainer
 import com.cctomato.tomatofile.ui.nav.Routes
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +35,7 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.io.File
 import java.net.URLEncoder
+import java.util.Locale
 
 data class TrackOption(val id: Int, val name: String)
 
@@ -377,16 +379,25 @@ class VlcPlayerViewModel(
             val file = withContext(Dispatchers.IO) {
                 runCatching { container.repository.localFile(source, entry) }.getOrNull()
             } ?: return@launch
-            val retriever = MediaMetadataRetriever()
-            val duration = try {
-                retriever.setDataSource(file.absolutePath)
-                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                    ?.toLongOrNull() ?: 0L
-            } catch (_: Throwable) {
+            val extension = file.extension.lowercase()
+            val pcrDuration = if (extension in setOf("ts", "m2ts", "mts")) {
+                MpegTsDuration.probe(file)
+            } else null
+            val retrieverDuration = if (pcrDuration == null) {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(file.absolutePath)
+                    retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        ?.toLongOrNull() ?: 0L
+                } catch (_: Throwable) {
+                    0L
+                } finally {
+                    retriever.release()
+                }
+            } else {
                 0L
-            } finally {
-                retriever.release()
             }
+            val duration = pcrDuration ?: retrieverDuration
             if (currentEntry?.path != entry.path || duration <= 0L) return@launch
             fallbackDurationMs = duration
             _state.update {
@@ -493,8 +504,29 @@ class VlcPlayerViewModel(
     }
 
     fun seekTo(positionMs: Long) {
-        mediaPlayer.setTime(positionMs.coerceAtLeast(0L))
-        syncProgress()
+        val target = positionMs.coerceAtLeast(0L)
+        if (!mediaPlayer.isSeekable && fallbackDurationMs > 0L && currentEntry?.kind == PreviewKind.VIDEO) {
+            restartAt(target)
+        } else {
+            mediaPlayer.setTime(target)
+            syncProgress()
+        }
+    }
+
+    private fun restartAt(positionMs: Long) {
+        val source = currentSource ?: return
+        val entry = currentEntry ?: return
+        val media = runCatching {
+            buildMedia(source, entry).apply {
+                addOption(":start-time=" + String.format(Locale.US, "%.3f", positionMs / 1000.0))
+            }
+        }.getOrNull() ?: return
+        mediaPlayer.stop()
+        mediaPlayer.media = media
+        media.release()
+        mediaPlayer.rate = _state.value.speed
+        mediaPlayer.play()
+        _state.update { it.copy(positionMs = positionMs, buffering = true) }
     }
 
     fun seekBy(deltaMs: Long) {

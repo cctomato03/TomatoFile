@@ -135,14 +135,14 @@ class BrowseViewModel(
         val cachedIndex = history.indexOfLast { it.path == normalized }
         if (cachedIndex >= 0) {
             val snapshot = history[cachedIndex]
-            while (history.size > cachedIndex) history.removeLast()
+            while (history.size > cachedIndex) history.removeAt(history.lastIndex)
             restore(snapshot)
             return
         }
 
         // Descending into a child: remember the current directory first.
         if (!current.loading && current.error == null) {
-            history.addLast(DirectorySnapshot(current.path, current.entries))
+            history.add(DirectorySnapshot(current.path, current.entries))
             if (history.size > 32) history.removeAt(0)
         }
         scrollRequestVersion++
